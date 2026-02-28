@@ -4,8 +4,7 @@
 # 🗳️ Online Poll System  
 **Real-time voting with secure authentication – built with FastAPI + Vanilla JS**
 
-![Poll System Banner]([https://via.placeholder.com/800x300/4CAF50/FFFFFF?text=Online+Poll+System](https://github.com/user-attachments/assets/90e24cf3-ab43-4d81-9e48-2644c67c3da9))  
-*(Replace with your own screenshot or cool banner later)*
+<img width="1786" height="934" alt="image" src="https://github.com/user-attachments/assets/90e24cf3-ab43-4d81-9e48-2644c67c3da9" />
 
 ---
 
