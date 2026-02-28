@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Poll System - Polls</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; color: #333; margin-bottom: 1.5rem; }
+
+        .create-section {
+            background: white;
+            padding: 1.8rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom: 2.5rem;
+        }
+        .create-section h2 { margin-top: 0; color: #444; }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea { resize: vertical; min-height: 110px; }
+
+        button.create-btn {
+            padding: 12px 28px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button.create-btn:hover { background: #1976D2; }
+
+        .poll {
+            background: white;
+            padding: 1.4rem;
+            margin: 1.2rem 0;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+        }
+        .poll h3 { margin-top: 0; color: #222; }
+        .poll small { color: #777; font-size: 0.9rem; }
+
+        .options {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0;
+        }
+        .options li {
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.05rem;
+        }
+        .vote-btn {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .vote-btn:hover { background: #43A047; }
+        .vote-count {
+            color: #d32f2f;
+            font-weight: bold;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        #no-polls {
+            text-align: center;
+            color: #777;
+            font-size: 1.2rem;
+            margin: 3rem 0;
+        }
+        .error {
+            color: #d32f2f;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Online Poll System</h1>
+
+    <!-- Create Poll Form -->
+    <div class="create-section">
+        <h2>Create New Poll</h2>
+        <form id="createForm">
+            <input type="text" id="question" placeholder="Enter your question..." required>
+            <textarea id="options" placeholder="Enter options (one per line)" required></textarea>
+            <button type="submit" class="create-btn">Create Poll</button>
+        </form>
+    </div>
+
+    <div id="polls-container"></div>
+    <p id="no-polls" style="display:none;">No polls available yet. Create one!</p>
+</div>
+
+<script>
+const API_BASE = 'http://127.0.0.1:8000';
+
+const container = document.getElementById('polls-container');
+const noPollsMsg = document.getElementById('no-polls');
+
+let currentUserEmail = null;
+
+// Fetch current logged-in user email
+async function getCurrentUser() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/current-user`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            currentUserEmail = data.email;
+        }
+    } catch (err) {
+        console.warn("Could not fetch current user info", err);
+    }
+}
+
+async function loadPolls() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Please login first');
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // Get current user email (only once)
+    if (!currentUserEmail) {
+        await getCurrentUser();
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/polls`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+            if (res.status === 401) {
+                alert('Session expired. Please login again.');
+                localStorage.removeItem('token');
+                window.location.href = 'index.html';
+            }
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const polls = await res.json();
+
+        container.innerHTML = '';
+
+        if (polls.length === 0) {
+            noPollsMsg.style.display = 'block';
+            return;
+        }
+
+        noPollsMsg.style.display = 'none';
+
+        polls.forEach(poll => {
+            const isCreator = currentUserEmail && poll.creator_email === currentUserEmail;
+
+            const div = document.createElement('div');
+            div.className = 'poll';
+   div.innerHTML = `
+    <h3>${poll.question}</h3>
+    ${isCreator ? `
+        <div style="margin: 8px 0; font-size: 0.95rem; color: #555;">
+            <strong>Total votes:</strong> ${poll.votes.reduce((a, b) => a + b, 0)}
+            <small style="margin-left: 15px;">(you are the creator)</small>
+        </div>
+    ` : ''}
+    ${isCreator ? `<small>Created by you</small>` : ''}
+    <ul class="options">
+        ${poll.options.map((opt, i) => `
+            <li>
+                ${opt}
+                ${isCreator ? `<span class="vote-count">(${poll.votes?.[i] ?? 0} votes)</span>` : ''}
+                <button class="vote-btn" onclick="vote(${poll.id}, ${i})">Vote</button>
+            </li>
+        `).join('')}
+    </ul>
+`;
+            container.appendChild(div);
+        });
+
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = `<p class="error">Error loading polls: ${err.message}</p>`;
+    }
+}
+
+async function vote(pollId, optionIndex) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/polls/${pollId}/vote`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ option_index: optionIndex })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || 'Vote failed');
+        }
+
+        alert('Vote recorded!');
+        loadPolls();
+
+    } catch (err) {
+        alert('Could not vote: ' + err.message);
+    }
+}
+
+// Create poll handler
+document.getElementById('createForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const question = document.getElementById('question').value.trim();
+    const optionsText = document.getElementById('options').value.trim();
+
+    if (!question || !optionsText) {
+        alert('Please fill question and at least two options');
+        return;
+    }
+
+    const options = optionsText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+    if (options.length < 2) {
+        alert('You need at least 2 options');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Please login first');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/polls`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ question, options })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || 'Failed to create poll');
+        }
+
+        const result = await res.json();
+        alert(`Poll created! (ID: ${result.poll_id})`);
+
+        document.getElementById('question').value = '';
+        document.getElementById('options').value = '';
+
+        loadPolls();
+
+    } catch (err) {
+        alert('Create poll failed: ' + err.message);
+    }
+});
+
+// Initial load
+window.addEventListener('load', () => {
+    loadPolls();
+});
+</script>
+
+</body>
+</html>
