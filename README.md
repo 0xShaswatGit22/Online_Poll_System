@@ -4,11 +4,7 @@ https://github.com/user-attachments/assets/90e24cf3-ab43-4d81-9e48-2644c67c3da9
 ```markdown
 # 🗳️ Online Poll System  
 **Real-time voting with secure authentication – built with FastAPI + Vanilla JS**
-<p align="center">
-  <img src="https://github.com/0xShaswatGit22/Online_Poll_System/raw/main/assets/screenshot.png" 
-       alt="Online Poll System Interface" 
-       width="80%"/>
-</p>
+
 <img width="1786" height="934" alt="image" src="https://github.com/user-attachments/assets/90e24cf3-ab43-4d81-9e48-2644c67c3da9" />
 
 ---
